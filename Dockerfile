@@ -22,9 +22,11 @@ ENV REPO prologic/$APP
 
 LABEL golinks.app main
 
+COPY .dockerfiles/start.sh /start.sh
+
 COPY --from=build /go/src/github.com/${REPO}/${APP} /${APP}
 
 EXPOSE 8000/tcp
 
-ENTRYPOINT ["/golinks"]
+ENTRYPOINT ["/start.sh"]
 CMD []
