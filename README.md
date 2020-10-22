@@ -53,6 +53,22 @@ golinks:
         - "8000:8000"
 ```
 
+You can also specify command line arguments as described in [configuration](#configuration) and make docker container persistent with volumes:
+
+```
+golinks:
+  image: 'prologic/golinks:latest'
+  container_name: golinks
+  command:
+      - "-dbpath=/path/to/container/search.db"
+      - "-title=Dave's Search"
+      - "-fqdn=localhost:8000"
+      - "-url=https://www.google.com/search?q=%s&btnK"
+      - "-suggest=https://suggestqueries.google.com/complete/search?client=firefox&q=%s"
+  volumes:
+      - "./path/to/local/search.db:/path/to/container/search.db"
+```
+
 ## Usage
 
 Run golinks:
