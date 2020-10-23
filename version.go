@@ -9,7 +9,7 @@ var (
 	Package = "golinks"
 
 	// Version release version
-	Version = "0.0.3"
+	Version = "0.0.5"
 
 	// Commit will be overwritten automatically by the build system
 	Commit = "HEAD"
