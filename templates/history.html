@@ -1,0 +1,25 @@
+{{define "content"}}
+<section class="container">
+  <div class="columns">
+    <div class="column">
+      <h2 class="mt-2 mb-1">History</h2>
+      <table class="table">
+        <thead>
+        <tr>
+          <th>When</th>
+          <th class="text-left">What</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{ range .Entries }}
+          <tr>
+            <td style="width: 30%">{{ .When }}</td>
+            <td><code>{{ .What }}</code></td>
+          </tr>
+        {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{{end}}

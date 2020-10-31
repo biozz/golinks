@@ -137,9 +137,15 @@ func (s *Server) IndexHandler() httprouter.Handle {
 						http.StatusInternalServerError,
 					)
 				}
+				if err := AddHistoryEntry(command.Name(), ""); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			} else if bookmark, ok := LookupBookmark(cmd); ok {
 				q := strings.Join(args, " ")
 				bookmark.Exec(w, r, q)
+				if err := AddHistoryEntry(bookmark.Name(), q); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			} else {
 				if s.config.URL != "" {
 					url := s.config.URL
@@ -206,6 +212,46 @@ func (s *Server) ListHandler() httprouter.Handle {
 			"Commands":  cmd,
 		}
 		s.render("list", w, data)
+	}
+}
+
+// HistoryHandler shows commands usage history
+func (s *Server) HistoryHandler() httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		s.counters.Inc("n_history")
+		allEntries := make([]HistoryEntry, 0)
+		err := db.Scan([]byte("history_"), func(key []byte) error {
+			val, err := db.Get(key)
+			if err != nil {
+				s.logger.Println(err)
+				return nil
+			}
+			var entry HistoryEntry
+			err = json.Unmarshal(val, &entry)
+			if err != nil {
+				s.logger.Println(err)
+				return nil
+			}
+			allEntries = append(allEntries, entry)
+			return nil
+		})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		allEntriesReversed := make([]HistoryEntry, 0)
+		for i := len(allEntries) - 1; i >= 0; i-- {
+			entry := allEntries[i]
+			allEntriesReversed = append(allEntriesReversed, entry)
+		}
+		entries := make([]HTMLHistoryEntry, 0)
+		for _, entry := range allEntriesReversed {
+			entries = append(entries, HTMLHistoryEntry{
+				When: time.Unix(0, entry.Timestamp).Format(time.StampMilli),
+				What: fmt.Sprintf("%s %s", entry.Command, entry.Value),
+			})
+		}
+		s.render("history", w, map[string]interface{}{"Entries": entries})
 	}
 }
 
@@ -319,6 +365,7 @@ func (s *Server) initRoutes() {
 	s.router.POST("/", s.IndexHandler())
 	s.router.GET("/help", s.HelpHandler())
 	s.router.GET("/list", s.ListHandler())
+	s.router.GET("/history", s.HistoryHandler())
 	s.router.GET("/opensearch.xml", s.OpenSearchHandler())
 	s.router.GET("/suggest", s.SuggestionsHandler())
 }
@@ -372,9 +419,14 @@ func NewServer(bind string, config Config) (*Server, error) {
 	template.Must(listTemplate.Parse(box.MustString("list.html")))
 	template.Must(listTemplate.Parse(box.MustString("base.html")))
 
+	historyTemplate := template.New("history")
+	template.Must(historyTemplate.Parse(box.MustString("history.html")))
+	template.Must(historyTemplate.Parse(box.MustString("base.html")))
+
 	server.templates.Add("index", indexTemplate)
 	server.templates.Add("help", helpTemplate)
 	server.templates.Add("list", listTemplate)
+	server.templates.Add("history", historyTemplate)
 
 	server.initRoutes()
 
